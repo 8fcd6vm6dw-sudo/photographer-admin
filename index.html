@@ -123,6 +123,7 @@
                 <a href="#" class="active" data-page="dashboard">📊 数据概览</a>
                 <a href="#" data-page="hero">🖼️ 首页轮播</a>
                 <a href="#" data-page="portfolio">🎨 作品管理</a>
+                <a href="#" data-page="bookings">📩 预约管理 <span id="bookingBadge" style="background:#e74c3c;color:#fff;padding:0.1rem 0.5rem;border-radius:10px;font-size:0.75rem;margin-left:0.3rem;display:none;">0</span></a>
                 <a href="#" data-page="settings">⚙️ 网站设置</a>
                 <a href="#" data-page="deploy">🚀 发布更新</a>
             </nav>
@@ -141,6 +142,7 @@
                 <div class="stats">
                     <div class="stat-card"><div class="num" id="heroCount">0</div><div class="label">首页轮播图</div></div>
                     <div class="stat-card"><div class="num" id="portfolioCount">0</div><div class="label">作品图片</div></div>
+                    <div class="stat-card"><div class="num" id="bookingCount" style="color:#e74c3c;">0</div><div class="label">待处理预约</div></div>
                 </div>
                 <div class="card">
                     <h3>快速操作</h3>
@@ -148,6 +150,7 @@
                         <button class="btn btn-primary" onclick="switchPage('hero')">上传首页图片</button>
                         <button class="btn btn-primary" onclick="switchPage('portfolio')">上传作品图片</button>
                         <button class="btn btn-primary" onclick="switchPage('settings')">修改网站文字</button>
+                        <button class="btn btn-primary" onclick="switchPage('bookings')">查看预约</button>
                         <button class="btn btn-outline" onclick="deploySite()">发布到网站</button>
                     </div>
                 </div>
@@ -322,6 +325,15 @@
                 </div>
             </div>
 
+            <!-- 预约管理 -->
+            <div class="page" id="page-bookings">
+                <div class="card">
+                    <h3>📩 预约通知</h3>
+                    <p class="desc">客户通过网站提交的预约会显示在这里</p>
+                    <div id="bookingList"><div class="loading">加载中...</div></div>
+                </div>
+            </div>
+
             <!-- 发布更新 -->
             <div class="page" id="page-deploy">
                 <div class="card">
@@ -389,6 +401,7 @@
                 document.getElementById('app').style.display = 'block';
                 renderAll();
                 await loadSiteConfig();
+                loadBookings();
                 showToast('加载成功', 'success');
             } catch (e) {
                 showToast('加载失败，请检查 Token', 'error');
@@ -728,9 +741,10 @@
             document.getElementById('page-' + page).classList.add('active');
             document.querySelectorAll('.sidebar nav a').forEach(a => a.classList.remove('active'));
             document.querySelector(`[data-page="${page}"]`).classList.add('active');
-            const titles = { dashboard: '数据概览', hero: '首页轮播', portfolio: '作品管理', settings: '网站设置', deploy: '发布更新' };
+            const titles = { dashboard: '数据概览', hero: '首页轮播', portfolio: '作品管理', bookings: '预约管理', settings: '网站设置', deploy: '发布更新' };
             document.getElementById('pageTitle').textContent = titles[page];
             document.getElementById('sidebar').classList.remove('open');
+            if (page === 'bookings') loadBookings();
         }
 
         // 提示
@@ -739,6 +753,79 @@
             toast.textContent = msg;
             toast.className = 'toast show ' + type;
             setTimeout(() => toast.className = 'toast', 3000);
+        }
+
+        // 加载预约列表
+        async function loadBookings() {
+            const list = document.getElementById('bookingList');
+            try {
+                const issues = await ghAPI(`/repos/${REPO}/issues?labels=预约&state=open&per_page=50`);
+                const badge = document.getElementById('bookingBadge');
+
+                if (issues.length === 0) {
+                    list.innerHTML = '<p style="color:#999;text-align:center;padding:2rem;">暂无新预约</p>';
+                    badge.style.display = 'none';
+                    document.getElementById('bookingCount').textContent = '0';
+                    return;
+                }
+
+                badge.textContent = issues.length;
+                badge.style.display = 'inline';
+                document.getElementById('bookingCount').textContent = issues.length;
+
+                list.innerHTML = issues.map(issue => {
+                    const body = issue.body || '';
+                    const lines = body.split('\n').filter(l => l.trim());
+                    const info = {};
+                    lines.forEach(line => {
+                        const [key, ...vals] = line.split('：');
+                        if (key && vals.length) info[key.trim()] = vals.join('：').trim();
+                    });
+
+                    const time = new Date(issue.created_at).toLocaleString('zh-CN');
+                    const name = info['姓名'] || issue.title.replace('📩 新预约 - ', '');
+                    const phone = info['电话'] || '';
+                    const service = info['服务类型'] || '';
+                    const date = info['期望日期'] || '';
+                    const note = info['备注'] || '';
+
+                    return `
+                        <div style="border:1px solid #eee;border-radius:8px;padding:1rem;margin-bottom:0.8rem;background:#fdf8f3;">
+                            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:0.5rem;">
+                                <div>
+                                    <strong style="font-size:1rem;">${name}</strong>
+                                    <span style="color:#999;font-size:0.8rem;margin-left:0.5rem;">${time}</span>
+                                </div>
+                                <div style="display:flex;gap:0.3rem;">
+                                    ${phone ? `<a href="tel:${phone}" style="padding:0.3rem 0.6rem;background:#27ae60;color:#fff;border-radius:4px;text-decoration:none;font-size:0.8rem;">拨打</a>` : ''}
+                                    <button onclick="markBookingRead(${issue.number})" style="padding:0.3rem 0.6rem;background:#c9a87c;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:0.8rem;">已处理</button>
+                                </div>
+                            </div>
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.3rem;font-size:0.9rem;color:#555;">
+                                ${phone ? `<div>📞 ${phone}</div>` : ''}
+                                ${service ? `<div>📸 ${service}</div>` : ''}
+                                ${date && date !== '未填写' ? `<div>📅 ${date}</div>` : ''}
+                            </div>
+                            ${note && note !== '无' ? `<div style="margin-top:0.3rem;font-size:0.85rem;color:#777;">💬 ${note}</div>` : ''}
+                        </div>
+                    `;
+                }).join('');
+            } catch (e) {
+                list.innerHTML = '<p style="color:#e74c3c;text-align:center;padding:2rem;">加载失败</p>';
+                console.error(e);
+            }
+        }
+
+        // 标记预约已处理（关闭 issue）
+        async function markBookingRead(issueNumber) {
+            if (!confirm('确定标记为已处理？')) return;
+            try {
+                await ghAPI(`/repos/${REPO}/issues/${issueNumber}`, 'PATCH', { state: 'closed' });
+                showToast('已标记为已处理', 'success');
+                loadBookings();
+            } catch (e) {
+                showToast('操作失败', 'error');
+            }
         }
 
         // 初始化
