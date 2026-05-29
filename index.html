@@ -568,11 +568,15 @@
 
         // 删除图片
         async function deleteImage(filePath) {
-            const data = await ghAPI(`/repos/${REPO}/contents/${filePath}`);
-            await ghAPI(`/repos/${REPO}/contents/${filePath}`, 'DELETE', {
-                message: `删除图片: ${filePath}`,
-                sha: data.sha
-            });
+            try {
+                const data = await ghAPI(`/repos/${REPO}/contents/${filePath}`);
+                await ghAPI(`/repos/${REPO}/contents/${filePath}`, 'DELETE', {
+                    message: `删除图片: ${filePath}`,
+                    sha: data.sha
+                });
+            } catch (e) {
+                console.log('删除文件失败（可能已不存在）:', filePath, e);
+            }
         }
 
         // 压缩图片
@@ -642,29 +646,13 @@
         async function removeHero(index) {
             if (!confirm('确定删除这张图片？')) return;
             try {
+                showToast('删除中...');
                 await deleteImage(config.hero[index]);
                 config.hero.splice(index, 1);
-                for (let i = 0; i < config.hero.length; i++) {
-                    const oldPath = config.hero[i];
-                    const newPath = `images/hero/${i + 1}.jpg`;
-                    if (oldPath !== newPath) {
-                        const data = await ghAPI(`/repos/${REPO}/contents/${oldPath}`);
-                        await ghAPI(`/repos/${REPO}/contents/${newPath}`, 'PUT', {
-                            message: `重命名: ${oldPath} -> ${newPath}`,
-                            content: data.content,
-                            sha: data.sha
-                        });
-                        await ghAPI(`/repos/${REPO}/contents/${oldPath}`, 'DELETE', {
-                            message: `删除旧文件: ${oldPath}`,
-                            sha: (await ghAPI(`/repos/${REPO}/contents/${oldPath}`)).sha
-                        });
-                        config.hero[i] = newPath;
-                    }
-                }
                 await saveConfig('删除首页轮播图');
                 renderHero();
                 showToast('已删除', 'success');
-            } catch (e) { showToast('删除失败', 'error'); console.error(e); }
+            } catch (e) { showToast('删除失败: ' + e.message, 'error'); console.error(e); }
         }
 
         // 删除作品图片
