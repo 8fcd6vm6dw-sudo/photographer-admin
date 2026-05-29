@@ -312,6 +312,18 @@
                 </div>
 
                 <div class="card">
+                    <h3>预约通知设置</h3>
+                    <p class="desc">使用 Web3Forms 免费服务接收预约通知到邮箱</p>
+                    <div class="form-group">
+                        <label>Web3Forms Access Key</label>
+                        <input type="text" id="cfgWeb3Key" placeholder="输入 Web3Forms Access Key">
+                    </div>
+                    <p style="font-size:0.85rem;color:#666;margin-bottom:0.5rem;">
+                        获取方式：<a href="https://web3forms.com" target="_blank" style="color:#c9a87c;">web3forms.com</a> 注册后获取 Access Key
+                    </p>
+                </div>
+
+                <div class="card">
                     <h3>页脚</h3>
                     <div class="form-group">
                         <label>页脚文字</label>
@@ -445,6 +457,7 @@
             siteConfig.workHours = document.getElementById('cfgWorkHours').value;
             siteConfig.footerText = document.getElementById('cfgFooterText').value;
             siteConfig.copyright = document.getElementById('cfgCopyright').value;
+            siteConfig.web3formsKey = document.getElementById('cfgWeb3Key').value;
 
             // 收集服务项目
             const serviceInputs = document.querySelectorAll('.service-item input');
@@ -492,6 +505,7 @@
             document.getElementById('cfgWorkHours').value = c.workHours || '';
             document.getElementById('cfgFooterText').value = c.footerText || '';
             document.getElementById('cfgCopyright').value = c.copyright || '';
+            document.getElementById('cfgWeb3Key').value = c.web3formsKey || '';
 
             // 服务项目
             const services = c.services || ['婚纱摄影 / 婚礼跟拍', '个人写真 / 形象照', '情侣照 / 纪念日拍摄', '家庭照 / 亲子照', '商业人像 / 艺人宣传照'];
@@ -758,74 +772,39 @@
         // 加载预约列表
         async function loadBookings() {
             const list = document.getElementById('bookingList');
+            const badge = document.getElementById('bookingBadge');
+
+            // 检查是否配置了 Web3Forms
+            let hasWeb3 = false;
             try {
-                const issues = await ghAPI(`/repos/${REPO}/issues?labels=预约&state=open&per_page=50`);
-                const badge = document.getElementById('bookingBadge');
+                const cfgRes = await fetch(`https://raw.githubusercontent.com/${REPO}/main/site-config.json`);
+                const cfg = await cfgRes.json();
+                hasWeb3 = !!cfg.web3formsKey;
+            } catch (e) {}
 
-                if (issues.length === 0) {
-                    list.innerHTML = '<p style="color:#999;text-align:center;padding:2rem;">暂无新预约</p>';
-                    badge.style.display = 'none';
-                    document.getElementById('bookingCount').textContent = '0';
-                    return;
-                }
-
-                badge.textContent = issues.length;
-                badge.style.display = 'inline';
-                document.getElementById('bookingCount').textContent = issues.length;
-
-                list.innerHTML = issues.map(issue => {
-                    const body = issue.body || '';
-                    const lines = body.split('\n').filter(l => l.trim());
-                    const info = {};
-                    lines.forEach(line => {
-                        const [key, ...vals] = line.split('：');
-                        if (key && vals.length) info[key.trim()] = vals.join('：').trim();
-                    });
-
-                    const time = new Date(issue.created_at).toLocaleString('zh-CN');
-                    const name = info['姓名'] || issue.title.replace('📩 新预约 - ', '');
-                    const phone = info['电话'] || '';
-                    const service = info['服务类型'] || '';
-                    const date = info['期望日期'] || '';
-                    const note = info['备注'] || '';
-
-                    return `
-                        <div style="border:1px solid #eee;border-radius:8px;padding:1rem;margin-bottom:0.8rem;background:#fdf8f3;">
-                            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:0.5rem;">
-                                <div>
-                                    <strong style="font-size:1rem;">${name}</strong>
-                                    <span style="color:#999;font-size:0.8rem;margin-left:0.5rem;">${time}</span>
-                                </div>
-                                <div style="display:flex;gap:0.3rem;">
-                                    ${phone ? `<a href="tel:${phone}" style="padding:0.3rem 0.6rem;background:#27ae60;color:#fff;border-radius:4px;text-decoration:none;font-size:0.8rem;">拨打</a>` : ''}
-                                    <button onclick="markBookingRead(${issue.number})" style="padding:0.3rem 0.6rem;background:#c9a87c;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:0.8rem;">已处理</button>
-                                </div>
-                            </div>
-                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.3rem;font-size:0.9rem;color:#555;">
-                                ${phone ? `<div>📞 ${phone}</div>` : ''}
-                                ${service ? `<div>📸 ${service}</div>` : ''}
-                                ${date && date !== '未填写' ? `<div>📅 ${date}</div>` : ''}
-                            </div>
-                            ${note && note !== '无' ? `<div style="margin-top:0.3rem;font-size:0.85rem;color:#777;">💬 ${note}</div>` : ''}
-                        </div>
-                    `;
-                }).join('');
-            } catch (e) {
-                list.innerHTML = '<p style="color:#e74c3c;text-align:center;padding:2rem;">加载失败</p>';
-                console.error(e);
+            if (!hasWeb3) {
+                list.innerHTML = `
+                    <div style="text-align:center;padding:2rem;color:#666;">
+                        <p style="font-size:1.1rem;margin-bottom:1rem;">📩 预约通知功能未配置</p>
+                        <p style="margin-bottom:1rem;">请先在「网站设置」中配置 Web3Forms Access Key</p>
+                        <p style="font-size:0.85rem;color:#999;">配置后，客户提交的预约会发送到你的邮箱</p>
+                        <a href="https://web3forms.com" target="_blank" style="display:inline-block;margin-top:1rem;padding:0.5rem 1rem;background:#c9a87c;color:#fff;border-radius:6px;text-decoration:none;">获取 Access Key</a>
+                    </div>
+                `;
+                badge.style.display = 'none';
+                document.getElementById('bookingCount').textContent = '-';
+                return;
             }
-        }
 
-        // 标记预约已处理（关闭 issue）
-        async function markBookingRead(issueNumber) {
-            if (!confirm('确定标记为已处理？')) return;
-            try {
-                await ghAPI(`/repos/${REPO}/issues/${issueNumber}`, 'PATCH', { state: 'closed' });
-                showToast('已标记为已处理', 'success');
-                loadBookings();
-            } catch (e) {
-                showToast('操作失败', 'error');
-            }
+            list.innerHTML = `
+                <div style="text-align:center;padding:2rem;color:#27ae60;">
+                    <p style="font-size:1.1rem;margin-bottom:0.5rem;">✅ 预约通知已启用</p>
+                    <p style="color:#666;font-size:0.9rem;">客户提交的预约会发送到你的邮箱</p>
+                    <p style="color:#999;font-size:0.85rem;margin-top:0.5rem;">请检查邮箱查看最新预约</p>
+                </div>
+            `;
+            badge.style.display = 'none';
+            document.getElementById('bookingCount').textContent = '✓';
         }
 
         // 初始化
