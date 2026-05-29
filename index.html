@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>家禾摄影 - 后台管理</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f2f5; color: #333; }
+
+        .login-page { display: flex; justify-content: center; align-items: center; min-height: 100vh; background: linear-gradient(135deg, #1a1a1a, #333); }
+        .login-box { background: #fff; padding: 3rem; border-radius: 8px; width: 400px; max-width: 90%; }
+        .login-box h2 { text-align: center; margin-bottom: 0.5rem; font-size: 1.5rem; }
+        .login-box p { text-align: center; color: #666; margin-bottom: 2rem; font-size: 0.9rem; }
+        .login-box input { width: 100%; padding: 0.8rem 1rem; border: 1px solid #ddd; border-radius: 6px; font-size: 1rem; margin-bottom: 1rem; }
+        .login-box input:focus { outline: none; border-color: #c9a87c; }
+        .login-box button { width: 100%; padding: 0.8rem; background: #c9a87c; color: #fff; border: none; border-radius: 6px; font-size: 1rem; cursor: pointer; }
+        .login-box button:hover { background: #b8956a; }
+        .login-box .hint { font-size: 0.8rem; color: #999; margin-top: 1rem; text-align: center; }
+        .login-box .hint a { color: #c9a87c; }
+
+        .app { display: none; }
+        .sidebar { position: fixed; left: 0; top: 0; bottom: 0; width: 220px; background: #1a1a1a; color: #fff; padding: 1.5rem 0; }
+        .sidebar h2 { text-align: center; font-size: 1.2rem; padding: 0 1rem 1.5rem; border-bottom: 1px solid #333; }
+        .sidebar nav a { display: flex; align-items: center; gap: 0.8rem; padding: 0.8rem 1.5rem; color: #999; text-decoration: none; transition: all 0.2s; }
+        .sidebar nav a:hover, .sidebar nav a.active { color: #fff; background: #333; }
+        .sidebar .logout { position: absolute; bottom: 1rem; left: 0; right: 0; text-align: center; }
+        .sidebar .logout a { color: #999; text-decoration: none; font-size: 0.9rem; }
+        .sidebar .logout a:hover { color: #c9a87c; }
+
+        .main { margin-left: 220px; padding: 2rem; }
+        .topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
+        .topbar h1 { font-size: 1.5rem; }
+        .topbar .btn-deploy { padding: 0.5rem 1.2rem; background: #c9a87c; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 0.9rem; }
+        .topbar .btn-deploy:hover { background: #b8956a; }
+
+        .page { display: none; }
+        .page.active { display: block; }
+
+        .card { background: #fff; border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+        .card h3 { margin-bottom: 1rem; font-size: 1.1rem; }
+        .card p.desc { color: #666; font-size: 0.9rem; margin-bottom: 1rem; }
+
+        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+        .stat-card { background: #fff; border-radius: 8px; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+        .stat-card .num { font-size: 2rem; font-weight: 700; color: #c9a87c; }
+        .stat-card .label { color: #666; font-size: 0.9rem; }
+
+        .upload-zone { border: 2px dashed #ddd; border-radius: 8px; padding: 2rem; text-align: center; cursor: pointer; transition: all 0.2s; margin-bottom: 1rem; }
+        .upload-zone:hover { border-color: #c9a87c; background: #fdf8f3; }
+        .upload-zone.dragover { border-color: #c9a87c; background: #fdf8f3; }
+
+        .image-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 1rem; }
+        .image-card { position: relative; border-radius: 8px; overflow: hidden; aspect-ratio: 1; }
+        .image-card img { width: 100%; height: 100%; object-fit: cover; }
+        .image-card .overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.2s; }
+        .image-card:hover .overlay { opacity: 1; }
+        .image-card .overlay button { padding: 0.5rem 1rem; background: #e74c3c; color: #fff; border: none; border-radius: 4px; cursor: pointer; }
+        .image-card .name { position: absolute; bottom: 0; left: 0; right: 0; padding: 0.3rem 0.5rem; background: rgba(0,0,0,0.7); color: #fff; font-size: 0.75rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        .tabs { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+        .tab-btn { padding: 0.5rem 1rem; border: 1px solid #ddd; background: #fff; border-radius: 20px; cursor: pointer; font-size: 0.9rem; transition: all 0.2s; }
+        .tab-btn:hover, .tab-btn.active { background: #c9a87c; color: #fff; border-color: #c9a87c; }
+
+        .category-uploads { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+        .cat-upload { border: 1px solid #eee; border-radius: 8px; padding: 1rem; text-align: center; }
+        .cat-upload h4 { margin-bottom: 0.3rem; }
+        .cat-upload p { color: #999; font-size: 0.85rem; margin-bottom: 0.8rem; }
+        .cat-upload .upload-zone { padding: 1rem; margin-bottom: 0; }
+        .cat-upload .upload-zone p { font-size: 0.85rem; }
+
+        .form-group { margin-bottom: 1rem; }
+        .form-group label { display: block; margin-bottom: 0.3rem; font-weight: 500; font-size: 0.9rem; }
+        .form-group input, .form-group textarea { width: 100%; padding: 0.7rem; border: 1px solid #ddd; border-radius: 6px; font-size: 0.95rem; }
+        .form-group input:focus, .form-group textarea:focus { outline: none; border-color: #c9a87c; }
+        .btn { padding: 0.6rem 1.2rem; border: none; border-radius: 6px; cursor: pointer; font-size: 0.9rem; }
+        .btn-primary { background: #c9a87c; color: #fff; }
+        .btn-primary:hover { background: #b8956a; }
+        .btn-danger { background: #e74c3c; color: #fff; }
+        .btn-outline { background: #fff; border: 1px solid #ddd; }
+
+        .toast { position: fixed; top: 1rem; right: 1rem; padding: 0.8rem 1.5rem; background: #333; color: #fff; border-radius: 6px; transform: translateX(120%); transition: transform 0.3s; z-index: 999; }
+        .toast.show { transform: translateX(0); }
+        .toast.success { background: #27ae60; }
+        .toast.error { background: #e74c3c; }
+
+        .loading { text-align: center; padding: 2rem; color: #999; }
+
+        @media (max-width: 768px) {
+            .sidebar { display: none; }
+            .sidebar.open { display: block; width: 100%; }
+            .main { margin-left: 0; }
+            .menu-toggle { display: block; }
+        }
+        .menu-toggle { display: none; background: none; border: none; font-size: 1.5rem; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <!-- 登录页面 -->
+    <div class="login-page" id="loginPage">
+        <div class="login-box">
+            <h2>家禾摄影</h2>
+            <p>后台管理系统</p>
+            <input type="password" id="tokenInput" placeholder="输入 GitHub Token">
+            <button onclick="login()">登录</button>
+            <p class="hint">Token 获取：<a href="https://github.com/settings/tokens/new" target="_blank">创建 Token</a>，勾选 repo 权限</p>
+        </div>
+    </div>
+
+    <!-- 主应用 -->
+    <div class="app" id="app">
+        <aside class="sidebar" id="sidebar">
+            <h2>📷 后台管理</h2>
+            <nav>
+                <a href="#" class="active" data-page="dashboard">📊 数据概览</a>
+                <a href="#" data-page="hero">🖼️ 首页轮播</a>
+                <a href="#" data-page="portfolio">🎨 作品管理</a>
+                <a href="#" data-page="deploy">🚀 发布更新</a>
+            </nav>
+            <div class="logout"><a href="#" onclick="logout()">退出登录</a></div>
+        </aside>
+
+        <div class="main">
+            <div class="topbar">
+                <button class="menu-toggle" onclick="document.getElementById('sidebar').classList.toggle('open')">☰</button>
+                <h1 id="pageTitle">数据概览</h1>
+                <button class="btn-deploy" onclick="deploySite()">发布更新</button>
+            </div>
+
+            <!-- 数据概览 -->
+            <div class="page active" id="page-dashboard">
+                <div class="stats">
+                    <div class="stat-card"><div class="num" id="heroCount">0</div><div class="label">首页轮播图</div></div>
+                    <div class="stat-card"><div class="num" id="portfolioCount">0</div><div class="label">作品图片</div></div>
+                </div>
+                <div class="card">
+                    <h3>快速操作</h3>
+                    <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-top:0.5rem;">
+                        <button class="btn btn-primary" onclick="switchPage('hero')">上传首页图片</button>
+                        <button class="btn btn-primary" onclick="switchPage('portfolio')">上传作品图片</button>
+                        <button class="btn btn-outline" onclick="deploySite()">发布到网站</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 首页轮播 -->
+            <div class="page" id="page-hero">
+                <div class="card">
+                    <h3>首页轮播图</h3>
+                    <p class="desc">建议 3-5 张横版大图，支持 JPG/PNG</p>
+                    <div class="upload-zone" id="heroUploadZone">
+                        <p>拖拽图片到此处或 <strong>点击上传</strong></p>
+                    </div>
+                    <input type="file" id="heroInput" accept="image/*" multiple style="display:none">
+                    <div class="image-grid" id="heroGrid"><div class="loading">加载中...</div></div>
+                </div>
+            </div>
+
+            <!-- 作品管理 -->
+            <div class="page" id="page-portfolio">
+                <div class="card">
+                    <h3>作品图片管理</h3>
+                    <div class="tabs">
+                        <button class="tab-btn active" data-cat="all" onclick="filterCat('all')">全部</button>
+                        <button class="tab-btn" data-cat="anime" onclick="filterCat('anime')">二次元外景</button>
+                        <button class="tab-btn" data-cat="wide" onclick="filterCat('wide')">广角</button>
+                        <button class="tab-btn" data-cat="scene" onclick="filterCat('scene')">场照</button>
+                        <button class="tab-btn" data-cat="art" onclick="filterCat('art')">艺术照</button>
+                    </div>
+                    <div class="category-uploads">
+                        <div class="cat-upload">
+                            <h4>🖼️ 二次元外景</h4>
+                            <p>拖拽或点击上传</p>
+                            <div class="upload-zone" id="animeZone" onclick="document.getElementById('animeInput').click()"><p>📁 上传</p></div>
+                            <input type="file" id="animeInput" accept="image/*" multiple style="display:none">
+                        </div>
+                        <div class="cat-upload">
+                            <h4>🌄 广角</h4>
+                            <p>拖拽或点击上传</p>
+                            <div class="upload-zone" id="wideZone" onclick="document.getElementById('wideInput').click()"><p>📁 上传</p></div>
+                            <input type="file" id="wideInput" accept="image/*" multiple style="display:none">
+                        </div>
+                        <div class="cat-upload">
+                            <h4>📸 场照</h4>
+                            <p>拖拽或点击上传</p>
+                            <div class="upload-zone" id="sceneZone" onclick="document.getElementById('sceneInput').click()"><p>📁 上传</p></div>
+                            <input type="file" id="sceneInput" accept="image/*" multiple style="display:none">
+                        </div>
+                        <div class="cat-upload">
+                            <h4>🎭 艺术照</h4>
+                            <p>拖拽或点击上传</p>
+                            <div class="upload-zone" id="artZone" onclick="document.getElementById('artInput').click()"><p>📁 上传</p></div>
+                            <input type="file" id="artInput" accept="image/*" multiple style="display:none">
+                        </div>
+                    </div>
+                    <div class="image-grid" id="portfolioGrid"><div class="loading">加载中...</div></div>
+                </div>
+            </div>
+
+            <!-- 发布更新 -->
+            <div class="page" id="page-deploy">
+                <div class="card">
+                    <h3>发布网站更新</h3>
+                    <p class="desc">每次修改图片后需要点击发布，GitHub Pages 会自动更新网站</p>
+                    <button class="btn btn-primary" onclick="deploySite()" style="margin-top:0.5rem;">立即发布</button>
+                    <p id="deployStatus" style="margin-top:1rem;color:#666;font-size:0.9rem;"></p>
+                </div>
+                <div class="card">
+                    <h3>网站地址</h3>
+                    <p style="margin-top:0.5rem;"><a href="https://8fcd6vm6dw-sudo.github.io/photographer-website/" target="_blank" style="color:#c9a87c;">https://8fcd6vm6dw-sudo.github.io/photographer-website/</a></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        const REPO = '8fcd6vm6dw-sudo/photographer-website';
+        let TOKEN = '';
+        let config = { hero: [], portfolio: [] };
+        let currentFilter = 'all';
+
+        // 登录
+        function login() {
+            TOKEN = document.getElementById('tokenInput').value.trim();
+            if (!TOKEN) { showToast('请输入 Token', 'error'); return; }
+            localStorage.setItem('gh_token', TOKEN);
+            loadConfig();
+        }
+
+        function logout() {
+            localStorage.removeItem('gh_token');
+            TOKEN = '';
+            document.getElementById('loginPage').style.display = 'flex';
+            document.getElementById('app').style.display = 'none';
+        }
+
+        // API 请求
+        async function ghAPI(path, method = 'GET', body = null) {
+            const opts = {
+                method,
+                headers: {
+                    'Authorization': `token ${TOKEN}`,
+                    'Accept': 'application/vnd.github.v3+json'
+                }
+            };
+            if (body) opts.body = JSON.stringify(body);
+            const res = await fetch(`https://api.github.com${path}`, opts);
+            if (!res.ok) throw new Error(`GitHub API error: ${res.status}`);
+            return res.json();
+        }
+
+        // 加载配置
+        async function loadConfig() {
+            try {
+                const data = await ghAPI(`/repos/${REPO}/contents/images.json`);
+                const content = decodeURIComponent(escape(atob(data.content)));
+                config = JSON.parse(content);
+                config._sha = data.sha;
+                document.getElementById('loginPage').style.display = 'none';
+                document.getElementById('app').style.display = 'block';
+                renderAll();
+                showToast('加载成功', 'success');
+            } catch (e) {
+                showToast('加载失败，请检查 Token', 'error');
+                console.error(e);
+            }
+        }
+
+        // 保存配置
+        async function saveConfig(message) {
+            const content = btoa(unescape(encodeURIComponent(JSON.stringify(config, null, 4))));
+            await ghAPI(`/repos/${REPO}/contents/images.json`, 'PUT', {
+                message: message || '更新 images.json',
+                content: content,
+                sha: config._sha
+            });
+            // 重新获取 sha
+            const data = await ghAPI(`/repos/${REPO}/contents/images.json`);
+            config._sha = data.sha;
+        }
+
+        // 上传图片到 GitHub
+        async function uploadImage(filePath, file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = async () => {
+                    const base64 = btoa(new Uint8Array(reader.result).reduce((data, byte) => data + String.fromCharCode(byte), ''));
+                    try {
+                        await ghAPI(`/repos/${REPO}/contents/${filePath}`, 'PUT', {
+                            message: `上传图片: ${filePath}`,
+                            content: base64
+                        });
+                        resolve();
+                    } catch (e) { reject(e); }
+                };
+                reader.onerror = reject;
+                reader.readAsArrayBuffer(file);
+            });
+        }
+
+        // 删除图片
+        async function deleteImage(filePath) {
+            const data = await ghAPI(`/repos/${REPO}/contents/${filePath}`);
+            await ghAPI(`/repos/${REPO}/contents/${filePath}`, 'DELETE', {
+                message: `删除图片: ${filePath}`,
+                sha: data.sha
+            });
+        }
+
+        // 压缩图片
+        function compressImage(file, maxWidth) {
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        let w = img.width, h = img.height;
+                        if (w > maxWidth) { h = (maxWidth / w) * h; w = maxWidth; }
+                        canvas.width = w; canvas.height = h;
+                        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+                        canvas.toBlob(resolve, 'image/jpeg', 0.8);
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        // 处理首页轮播上传
+        async function handleHeroUpload(files) {
+            if (files.length === 0) return;
+            showToast(`上传中... 0/${files.length}`);
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                const compressed = await compressImage(file, 1920);
+                const num = config.hero.length + i + 1;
+                const ext = file.name.split('.').pop().toLowerCase();
+                const filePath = `images/hero/${num}.jpg`;
+                const newFile = new File([compressed], `${num}.jpg`, { type: 'image/jpeg' });
+                await uploadImage(filePath, newFile);
+                config.hero.push(filePath);
+                showToast(`上传中... ${i + 1}/${files.length}`);
+            }
+            await saveConfig('更新首页轮播图');
+            renderHero();
+            showToast(`上传完成，共 ${files.length} 张`, 'success');
+        }
+
+        // 处理作品上传
+        async function handlePortfolioUpload(files, category) {
+            if (files.length === 0) return;
+            showToast(`上传中... 0/${files.length}`);
+            const catImages = config.portfolio.filter(p => p.category === category);
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                const compressed = await compressImage(file, 1200);
+                const num = catImages.length + i + 1;
+                const filePath = `images/portfolio/${category}/${num}.jpg`;
+                const newFile = new File([compressed], `${num}.jpg`, { type: 'image/jpeg' });
+                await uploadImage(filePath, newFile);
+                config.portfolio.push({
+                    src: filePath,
+                    name: file.name.replace(/\.[^/.]+$/, ''),
+                    category: category
+                });
+                showToast(`上传中... ${i + 1}/${files.length}`);
+            }
+            await saveConfig('更新作品图片');
+            renderPortfolio();
+            showToast(`上传完成，共 ${files.length} 张`, 'success');
+        }
+
+        // 删除首页图片
+        async function removeHero(index) {
+            if (!confirm('确定删除这张图片？')) return;
+            try {
+                await deleteImage(config.hero[index]);
+                config.hero.splice(index, 1);
+                // 重命名剩余图片
+                for (let i = 0; i < config.hero.length; i++) {
+                    const oldPath = config.hero[i];
+                    const newPath = `images/hero/${i + 1}.jpg`;
+                    if (oldPath !== newPath) {
+                        const data = await ghAPI(`/repos/${REPO}/contents/${oldPath}`);
+                        await ghAPI(`/repos/${REPO}/contents/${newPath}`, 'PUT', {
+                            message: `重命名: ${oldPath} -> ${newPath}`,
+                            content: data.content,
+                            sha: data.sha
+                        });
+                        await ghAPI(`/repos/${REPO}/contents/${oldPath}`, 'DELETE', {
+                            message: `删除旧文件: ${oldPath}`,
+                            sha: (await ghAPI(`/repos/${REPO}/contents/${oldPath}`)).sha
+                        });
+                        config.hero[i] = newPath;
+                    }
+                }
+                await saveConfig('删除首页轮播图');
+                renderHero();
+                showToast('已删除', 'success');
+            } catch (e) { showToast('删除失败', 'error'); console.error(e); }
+        }
+
+        // 删除作品图片
+        async function removePortfolio(index) {
+            if (!confirm('确定删除这张图片？')) return;
+            try {
+                const item = config.portfolio[index];
+                await deleteImage(item.src);
+                config.portfolio.splice(index, 1);
+                await saveConfig('删除作品图片');
+                renderPortfolio();
+                showToast('已删除', 'success');
+            } catch (e) { showToast('删除失败', 'error'); console.error(e); }
+        }
+
+        // 发布网站
+        async function deploySite() {
+            const status = document.getElementById('deployStatus');
+            if (status) status.textContent = '正在发布...';
+            showToast('正在发布...');
+            // GitHub Pages 自动部署，只需确认最新提交
+            try {
+                const commits = await ghAPI(`/repos/${REPO}/commits?per_page=1`);
+                if (status) status.textContent = `已发布！最新提交: ${commits[0].commit.message}`;
+                showToast('发布成功！网站将在 1-2 分钟内更新', 'success');
+            } catch (e) {
+                if (status) status.textContent = '发布失败';
+                showToast('发布失败', 'error');
+            }
+        }
+
+        // 渲染
+        function renderAll() {
+            renderHero();
+            renderPortfolio();
+            document.getElementById('heroCount').textContent = config.hero.length;
+            document.getElementById('portfolioCount').textContent = config.portfolio.length;
+        }
+
+        function renderHero() {
+            const grid = document.getElementById('heroGrid');
+            if (config.hero.length === 0) {
+                grid.innerHTML = '<p style="color:#999;text-align:center;padding:2rem;">暂无轮播图</p>';
+            } else {
+                grid.innerHTML = config.hero.map((src, i) => `
+                    <div class="image-card">
+                        <img src="https://raw.githubusercontent.com/${REPO}/main/${src}" alt="轮播图${i+1}">
+                        <div class="overlay"><button onclick="removeHero(${i})">删除</button></div>
+                        <div class="name">轮播图 ${i + 1}</div>
+                    </div>
+                `).join('');
+            }
+            document.getElementById('heroCount').textContent = config.hero.length;
+        }
+
+        function renderPortfolio() {
+            const grid = document.getElementById('portfolioGrid');
+            let items = config.portfolio;
+            if (currentFilter !== 'all') items = items.filter(p => p.category === currentFilter);
+
+            if (items.length === 0) {
+                grid.innerHTML = '<p style="color:#999;text-align:center;padding:2rem;">暂无图片</p>';
+            } else {
+                const catNames = { anime: '二次元外景', wide: '广角', scene: '场照', art: '艺术照' };
+                grid.innerHTML = items.map((item, _) => {
+                    const realIndex = config.portfolio.indexOf(item);
+                    return `
+                        <div class="image-card">
+                            <img src="https://raw.githubusercontent.com/${REPO}/main/${item.src}" alt="${item.name}">
+                            <div class="overlay"><button onclick="removePortfolio(${realIndex})">删除</button></div>
+                            <div class="name">${catNames[item.category] || item.category}</div>
+                        </div>
+                    `;
+                }).join('');
+            }
+            document.getElementById('portfolioCount').textContent = config.portfolio.length;
+        }
+
+        function filterCat(cat) {
+            currentFilter = cat;
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelector(`[data-cat="${cat}"]`).classList.add('active');
+            renderPortfolio();
+        }
+
+        // 页面切换
+        function switchPage(page) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.getElementById('page-' + page).classList.add('active');
+            document.querySelectorAll('.sidebar nav a').forEach(a => a.classList.remove('active'));
+            document.querySelector(`[data-page="${page}"]`).classList.add('active');
+            const titles = { dashboard: '数据概览', hero: '首页轮播', portfolio: '作品管理', deploy: '发布更新' };
+            document.getElementById('pageTitle').textContent = titles[page];
+            document.getElementById('sidebar').classList.remove('open');
+        }
+
+        // 提示
+        function showToast(msg, type = '') {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.className = 'toast show ' + type;
+            setTimeout(() => toast.className = 'toast', 3000);
+        }
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            TOKEN = localStorage.getItem('gh_token') || '';
+            if (TOKEN) { loadConfig(); }
+            else { document.getElementById('loginPage').style.display = 'flex'; }
+
+            // 导航
+            document.querySelectorAll('.sidebar nav a').forEach(a => {
+                a.addEventListener('click', (e) => { e.preventDefault(); switchPage(a.dataset.page); });
+            });
+
+            // 首页上传
+            const heroZone = document.getElementById('heroUploadZone');
+            const heroInput = document.getElementById('heroInput');
+            heroZone.addEventListener('click', () => heroInput.click());
+            heroZone.addEventListener('dragover', (e) => { e.preventDefault(); heroZone.classList.add('dragover'); });
+            heroZone.addEventListener('dragleave', () => heroZone.classList.remove('dragover'));
+            heroZone.addEventListener('drop', (e) => { e.preventDefault(); heroZone.classList.remove('dragover'); handleHeroUpload(e.dataTransfer.files); });
+            heroInput.addEventListener('change', (e) => { handleHeroUpload(e.target.files); heroInput.value = ''; });
+
+            // 作品上传
+            ['anime', 'wide', 'scene', 'art'].forEach(cat => {
+                const zone = document.getElementById(cat + 'Zone');
+                const input = document.getElementById(cat + 'Input');
+                zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('dragover'); });
+                zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+                zone.addEventListener('drop', (e) => { e.preventDefault(); zone.classList.remove('dragover'); handlePortfolioUpload(e.dataTransfer.files, cat); });
+                input.addEventListener('change', (e) => { handlePortfolioUpload(e.target.files, cat); input.value = ''; });
+            });
+        });
+    </script>
+</body>
+</html>
