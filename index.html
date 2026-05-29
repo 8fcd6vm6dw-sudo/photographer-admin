@@ -73,11 +73,18 @@
         .form-group label { display: block; margin-bottom: 0.3rem; font-weight: 500; font-size: 0.9rem; }
         .form-group input, .form-group textarea { width: 100%; padding: 0.7rem; border: 1px solid #ddd; border-radius: 6px; font-size: 0.95rem; }
         .form-group input:focus, .form-group textarea:focus { outline: none; border-color: #c9a87c; }
+        .form-group textarea { resize: vertical; min-height: 60px; }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
         .btn { padding: 0.6rem 1.2rem; border: none; border-radius: 6px; cursor: pointer; font-size: 0.9rem; }
         .btn-primary { background: #c9a87c; color: #fff; }
         .btn-primary:hover { background: #b8956a; }
         .btn-danger { background: #e74c3c; color: #fff; }
         .btn-outline { background: #fff; border: 1px solid #ddd; }
+
+        .service-list { margin-bottom: 1rem; }
+        .service-item { display: flex; gap: 0.5rem; margin-bottom: 0.5rem; align-items: center; }
+        .service-item input { flex: 1; }
+        .service-item button { padding: 0.4rem 0.8rem; background: #e74c3c; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 0.85rem; }
 
         .toast { position: fixed; top: 1rem; right: 1rem; padding: 0.8rem 1.5rem; background: #333; color: #fff; border-radius: 6px; transform: translateX(120%); transition: transform 0.3s; z-index: 999; }
         .toast.show { transform: translateX(0); }
@@ -91,6 +98,7 @@
             .sidebar.open { display: block; width: 100%; }
             .main { margin-left: 0; }
             .menu-toggle { display: block; }
+            .form-row { grid-template-columns: 1fr; }
         }
         .menu-toggle { display: none; background: none; border: none; font-size: 1.5rem; cursor: pointer; }
     </style>
@@ -115,6 +123,7 @@
                 <a href="#" class="active" data-page="dashboard">📊 数据概览</a>
                 <a href="#" data-page="hero">🖼️ 首页轮播</a>
                 <a href="#" data-page="portfolio">🎨 作品管理</a>
+                <a href="#" data-page="settings">⚙️ 网站设置</a>
                 <a href="#" data-page="deploy">🚀 发布更新</a>
             </nav>
             <div class="logout"><a href="#" onclick="logout()">退出登录</a></div>
@@ -138,6 +147,7 @@
                     <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-top:0.5rem;">
                         <button class="btn btn-primary" onclick="switchPage('hero')">上传首页图片</button>
                         <button class="btn btn-primary" onclick="switchPage('portfolio')">上传作品图片</button>
+                        <button class="btn btn-primary" onclick="switchPage('settings')">修改网站文字</button>
                         <button class="btn btn-outline" onclick="deploySite()">发布到网站</button>
                     </div>
                 </div>
@@ -197,11 +207,126 @@
                 </div>
             </div>
 
+            <!-- 网站设置 -->
+            <div class="page" id="page-settings">
+                <div class="card">
+                    <h3>网站基本信息</h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>网站名称</label>
+                            <input type="text" id="cfgBrand" placeholder="家禾摄影">
+                        </div>
+                        <div class="form-group">
+                            <label>页面标题后缀</label>
+                            <input type="text" id="cfgTitleSuffix" placeholder="人像婚纱摄影">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>首页标题（用换行分隔两行）</label>
+                        <textarea id="cfgHeroTitle" rows="2" placeholder="家禾&#10;摄影工作室"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>首页副标题</label>
+                        <input type="text" id="cfgHeroSub" placeholder="用镜头记录每一个美好瞬间">
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>关于摄影师</h3>
+                    <div class="form-group">
+                        <label>关于标题</label>
+                        <input type="text" id="cfgAboutTitle" placeholder="关于摄影师">
+                    </div>
+                    <div class="form-group">
+                        <label>一句话简介</label>
+                        <input type="text" id="cfgAboutIntro" placeholder="我是家禾，一名专注人像与婚纱摄影的摄影师。">
+                    </div>
+                    <div class="form-group">
+                        <label>详细描述（第一段）</label>
+                        <textarea id="cfgAboutDesc" rows="3"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>详细描述（第二段）</label>
+                        <textarea id="cfgAboutDesc2" rows="3"></textarea>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>数据1（如 500+）</label>
+                            <input type="text" id="cfgStatClients" placeholder="500+">
+                        </div>
+                        <div class="form-group">
+                            <label>数据1标签</label>
+                            <input type="text" id="cfgStatClientsLabel" placeholder="满意客户">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>数据2（如 8）</label>
+                            <input type="text" id="cfgStatYears" placeholder="8">
+                        </div>
+                        <div class="form-group">
+                            <label>数据2标签</label>
+                            <input type="text" id="cfgStatYearsLabel" placeholder="年从业经验">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>服务项目（每行一项）</label>
+                        <div class="service-list" id="serviceList"></div>
+                        <button class="btn btn-outline" onclick="addService()">+ 添加项目</button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>联系方式</h3>
+                    <div class="form-group">
+                        <label>联系区域标题</label>
+                        <input type="text" id="cfgContactTitle" placeholder="预约拍摄">
+                    </div>
+                    <div class="form-group">
+                        <label>联系区域描述</label>
+                        <input type="text" id="cfgContactDesc" placeholder="期待用镜头记录您的美好时刻">
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>联系电话</label>
+                            <input type="text" id="cfgPhone" placeholder="13284854719">
+                        </div>
+                        <div class="form-group">
+                            <label>电子邮箱</label>
+                            <input type="text" id="cfgEmail" placeholder="m3318836697@icloud.com">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>微信号</label>
+                            <input type="text" id="cfgWechat" placeholder="m3318836697">
+                        </div>
+                        <div class="form-group">
+                            <label>工作时间</label>
+                            <input type="text" id="cfgWorkHours" placeholder="周一至周日 9:00 - 20:00">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>页脚</h3>
+                    <div class="form-group">
+                        <label>页脚文字</label>
+                        <input type="text" id="cfgFooterText" placeholder="用镜头记录爱与美">
+                    </div>
+                    <div class="form-group">
+                        <label>版权信息</label>
+                        <input type="text" id="cfgCopyright" placeholder="© 2026 家禾摄影工作室. All rights reserved.">
+                    </div>
+                    <button class="btn btn-primary" onclick="saveSiteConfig()" style="margin-top:0.5rem;">保存设置</button>
+                </div>
+            </div>
+
             <!-- 发布更新 -->
             <div class="page" id="page-deploy">
                 <div class="card">
                     <h3>发布网站更新</h3>
-                    <p class="desc">每次修改图片后需要点击发布，GitHub Pages 会自动更新网站</p>
+                    <p class="desc">每次修改内容后需要点击发布，GitHub Pages 会自动更新网站（约 1-2 分钟）</p>
                     <button class="btn btn-primary" onclick="deploySite()" style="margin-top:0.5rem;">立即发布</button>
                     <p id="deployStatus" style="margin-top:1rem;color:#666;font-size:0.9rem;"></p>
                 </div>
@@ -219,6 +344,8 @@
         const REPO = '8fcd6vm6dw-sudo/photographer-website';
         let TOKEN = '';
         let config = { hero: [], portfolio: [] };
+        let siteConfig = {};
+        let siteConfigSha = '';
         let currentFilter = 'all';
 
         // 登录
@@ -261,6 +388,7 @@
                 document.getElementById('loginPage').style.display = 'none';
                 document.getElementById('app').style.display = 'block';
                 renderAll();
+                await loadSiteConfig();
                 showToast('加载成功', 'success');
             } catch (e) {
                 showToast('加载失败，请检查 Token', 'error');
@@ -268,7 +396,119 @@
             }
         }
 
-        // 保存配置
+        // 加载网站文字配置
+        async function loadSiteConfig() {
+            try {
+                const data = await ghAPI(`/repos/${REPO}/contents/site-config.json`);
+                const content = decodeURIComponent(escape(atob(data.content)));
+                siteConfig = JSON.parse(content);
+                siteConfigSha = data.sha;
+                fillSettingsForm();
+            } catch (e) {
+                console.log('site-config.json 不存在或加载失败，使用默认值');
+                siteConfig = {};
+            }
+        }
+
+        // 保存网站文字配置
+        async function saveSiteConfig() {
+            // 从表单收集数据
+            siteConfig.brand = document.getElementById('cfgBrand').value;
+            siteConfig.heroTitle = document.getElementById('cfgHeroTitle').value;
+            siteConfig.heroSubtitle = document.getElementById('cfgHeroSub').value;
+            siteConfig.aboutTitle = document.getElementById('cfgAboutTitle').value;
+            siteConfig.aboutIntro = document.getElementById('cfgAboutIntro').value;
+            siteConfig.aboutDesc = document.getElementById('cfgAboutDesc').value;
+            siteConfig.aboutDesc2 = document.getElementById('cfgAboutDesc2').value;
+            siteConfig.statClients = document.getElementById('cfgStatClients').value;
+            siteConfig.statClientsLabel = document.getElementById('cfgStatClientsLabel').value;
+            siteConfig.statYears = document.getElementById('cfgStatYears').value;
+            siteConfig.statYearsLabel = document.getElementById('cfgStatYearsLabel').value;
+            siteConfig.contactTitle = document.getElementById('cfgContactTitle').value;
+            siteConfig.contactDesc = document.getElementById('cfgContactDesc').value;
+            siteConfig.phone = document.getElementById('cfgPhone').value;
+            siteConfig.email = document.getElementById('cfgEmail').value;
+            siteConfig.wechat = document.getElementById('cfgWechat').value;
+            siteConfig.workHours = document.getElementById('cfgWorkHours').value;
+            siteConfig.footerText = document.getElementById('cfgFooterText').value;
+            siteConfig.copyright = document.getElementById('cfgCopyright').value;
+
+            // 收集服务项目
+            const serviceInputs = document.querySelectorAll('.service-item input');
+            siteConfig.services = Array.from(serviceInputs).map(input => input.value).filter(v => v.trim());
+
+            const content = btoa(unescape(encodeURIComponent(JSON.stringify(siteConfig, null, 4))));
+            const isNew = !siteConfigSha;
+
+            try {
+                const body = {
+                    message: '更新网站文字配置',
+                    content: content
+                };
+                if (!isNew) body.sha = siteConfigSha;
+
+                await ghAPI(`/repos/${REPO}/contents/site-config.json`, 'PUT', body);
+                const data = await ghAPI(`/repos/${REPO}/contents/site-config.json`);
+                siteConfigSha = data.sha;
+                showToast('设置已保存，点击「发布更新」生效', 'success');
+            } catch (e) {
+                showToast('保存失败', 'error');
+                console.error(e);
+            }
+        }
+
+        // 填充设置表单
+        function fillSettingsForm() {
+            const c = siteConfig;
+            document.getElementById('cfgBrand').value = c.brand || '家禾摄影';
+            document.getElementById('cfgHeroTitle').value = c.heroTitle || '家禾\n摄影工作室';
+            document.getElementById('cfgHeroSub').value = c.heroSubtitle || '用镜头记录每一个美好瞬间';
+            document.getElementById('cfgAboutTitle').value = c.aboutTitle || '关于摄影师';
+            document.getElementById('cfgAboutIntro').value = c.aboutIntro || '';
+            document.getElementById('cfgAboutDesc').value = c.aboutDesc || '';
+            document.getElementById('cfgAboutDesc2').value = c.aboutDesc2 || '';
+            document.getElementById('cfgStatClients').value = c.statClients || '500+';
+            document.getElementById('cfgStatClientsLabel').value = c.statClientsLabel || '满意客户';
+            document.getElementById('cfgStatYears').value = c.statYears || '8';
+            document.getElementById('cfgStatYearsLabel').value = c.statYearsLabel || '年从业经验';
+            document.getElementById('cfgContactTitle').value = c.contactTitle || '预约拍摄';
+            document.getElementById('cfgContactDesc').value = c.contactDesc || '';
+            document.getElementById('cfgPhone').value = c.phone || '';
+            document.getElementById('cfgEmail').value = c.email || '';
+            document.getElementById('cfgWechat').value = c.wechat || '';
+            document.getElementById('cfgWorkHours').value = c.workHours || '';
+            document.getElementById('cfgFooterText').value = c.footerText || '';
+            document.getElementById('cfgCopyright').value = c.copyright || '';
+
+            // 服务项目
+            const services = c.services || ['婚纱摄影 / 婚礼跟拍', '个人写真 / 形象照', '情侣照 / 纪念日拍摄', '家庭照 / 亲子照', '商业人像 / 艺人宣传照'];
+            renderServices(services);
+        }
+
+        function renderServices(services) {
+            const list = document.getElementById('serviceList');
+            list.innerHTML = services.map((s, i) => `
+                <div class="service-item">
+                    <input type="text" value="${s}" placeholder="服务项目">
+                    <button onclick="removeService(${i})">删除</button>
+                </div>
+            `).join('');
+        }
+
+        function addService() {
+            const list = document.getElementById('serviceList');
+            const div = document.createElement('div');
+            div.className = 'service-item';
+            div.innerHTML = '<input type="text" value="" placeholder="服务项目"><button onclick="this.parentElement.remove()">删除</button>';
+            list.appendChild(div);
+        }
+
+        function removeService(index) {
+            const items = document.querySelectorAll('.service-item');
+            if (items[index]) items[index].remove();
+        }
+
+        // 保存 images.json 配置
         async function saveConfig(message) {
             const content = btoa(unescape(encodeURIComponent(JSON.stringify(config, null, 4))));
             await ghAPI(`/repos/${REPO}/contents/images.json`, 'PUT', {
@@ -276,7 +516,6 @@
                 content: content,
                 sha: config._sha
             });
-            // 重新获取 sha
             const data = await ghAPI(`/repos/${REPO}/contents/images.json`);
             config._sha = data.sha;
         }
@@ -337,7 +576,6 @@
                 const file = files[i];
                 const compressed = await compressImage(file, 1920);
                 const num = config.hero.length + i + 1;
-                const ext = file.name.split('.').pop().toLowerCase();
                 const filePath = `images/hero/${num}.jpg`;
                 const newFile = new File([compressed], `${num}.jpg`, { type: 'image/jpeg' });
                 await uploadImage(filePath, newFile);
@@ -379,7 +617,6 @@
             try {
                 await deleteImage(config.hero[index]);
                 config.hero.splice(index, 1);
-                // 重命名剩余图片
                 for (let i = 0; i < config.hero.length; i++) {
                     const oldPath = config.hero[i];
                     const newPath = `images/hero/${i + 1}.jpg`;
@@ -421,7 +658,6 @@
             const status = document.getElementById('deployStatus');
             if (status) status.textContent = '正在发布...';
             showToast('正在发布...');
-            // GitHub Pages 自动部署，只需确认最新提交
             try {
                 const commits = await ghAPI(`/repos/${REPO}/commits?per_page=1`);
                 if (status) status.textContent = `已发布！最新提交: ${commits[0].commit.message}`;
@@ -465,7 +701,7 @@
                 grid.innerHTML = '<p style="color:#999;text-align:center;padding:2rem;">暂无图片</p>';
             } else {
                 const catNames = { anime: '二次元外景', wide: '广角', scene: '场照', art: '艺术照' };
-                grid.innerHTML = items.map((item, _) => {
+                grid.innerHTML = items.map((item) => {
                     const realIndex = config.portfolio.indexOf(item);
                     return `
                         <div class="image-card">
@@ -492,7 +728,7 @@
             document.getElementById('page-' + page).classList.add('active');
             document.querySelectorAll('.sidebar nav a').forEach(a => a.classList.remove('active'));
             document.querySelector(`[data-page="${page}"]`).classList.add('active');
-            const titles = { dashboard: '数据概览', hero: '首页轮播', portfolio: '作品管理', deploy: '发布更新' };
+            const titles = { dashboard: '数据概览', hero: '首页轮播', portfolio: '作品管理', settings: '网站设置', deploy: '发布更新' };
             document.getElementById('pageTitle').textContent = titles[page];
             document.getElementById('sidebar').classList.remove('open');
         }
