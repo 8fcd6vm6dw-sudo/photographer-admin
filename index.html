@@ -237,6 +237,17 @@
                 <div class="card">
                     <h3>关于摄影师</h3>
                     <div class="form-group">
+                        <label>关于照片</label>
+                        <div style="display:flex;gap:1rem;align-items:flex-start;">
+                            <img id="aboutImagePreview" src="https://images.unsplash.com/photo-1554048612-b6a482bc67e5?w=200" style="width:120px;height:120px;object-fit:cover;border-radius:8px;">
+                            <div>
+                                <button class="btn btn-primary" onclick="document.getElementById('aboutImageInput').click()">更换照片</button>
+                                <input type="file" id="aboutImageInput" accept="image/*" style="display:none">
+                                <p style="font-size:0.8rem;color:#999;margin-top:0.5rem;">建议正方形或竖版照片</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group">
                         <label>关于标题</label>
                         <input type="text" id="cfgAboutTitle" placeholder="关于摄影师">
                     </div>
@@ -491,6 +502,9 @@
             document.getElementById('cfgHeroSub').value = c.heroSubtitle || '用镜头记录每一个美好瞬间';
             document.getElementById('cfgAboutTitle').value = c.aboutTitle || '关于摄影师';
             document.getElementById('cfgAboutIntro').value = c.aboutIntro || '';
+            if (c.aboutImage) {
+                document.getElementById('aboutImagePreview').src = c.aboutImage;
+            }
             document.getElementById('cfgAboutDesc').value = c.aboutDesc || '';
             document.getElementById('cfgAboutDesc2').value = c.aboutDesc2 || '';
             document.getElementById('cfgStatClients').value = c.statClients || '500+';
@@ -814,6 +828,26 @@
             heroZone.addEventListener('dragleave', () => heroZone.classList.remove('dragover'));
             heroZone.addEventListener('drop', (e) => { e.preventDefault(); heroZone.classList.remove('dragover'); handleHeroUpload(e.dataTransfer.files); });
             heroInput.addEventListener('change', (e) => { handleHeroUpload(e.target.files); heroInput.value = ''; });
+
+            // 关于照片上传
+            const aboutInput = document.getElementById('aboutImageInput');
+            aboutInput.addEventListener('change', async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                showToast('上传中...');
+                try {
+                    const compressed = await compressImage(file, 800);
+                    const newFile = new File([compressed], 'about.jpg', { type: 'image/jpeg' });
+                    await uploadImage('images/about.jpg', newFile);
+                    siteConfig.aboutImage = `https://raw.githubusercontent.com/${REPO}/main/images/about.jpg`;
+                    document.getElementById('aboutImagePreview').src = siteConfig.aboutImage;
+                    showToast('照片已更新，请保存设置并发布', 'success');
+                } catch (err) {
+                    showToast('上传失败', 'error');
+                    console.error(err);
+                }
+                aboutInput.value = '';
+            });
 
             // 作品上传
             ['anime', 'wide', 'scene', 'art'].forEach(cat => {
