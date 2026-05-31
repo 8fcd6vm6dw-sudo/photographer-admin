@@ -488,9 +488,17 @@
             siteConfig.copyright = document.getElementById('cfgCopyright').value;
             siteConfig.web3formsKey = document.getElementById('cfgWeb3Key').value;
 
+            // 确保 aboutImage 保留（上传时已设置到 siteConfig）
+            if (!siteConfig.aboutImage) {
+                siteConfig.aboutImage = `https://raw.githubusercontent.com/${REPO}/main/images/about.jpg`;
+            }
+
             // 收集服务项目
             const serviceInputs = document.querySelectorAll('.service-item input');
             siteConfig.services = Array.from(serviceInputs).map(input => input.value).filter(v => v.trim());
+
+            // aboutImage 已在上传时设置到 siteConfig，确保保留
+            // 如果用户没有上传新照片，保留原有值
 
             const content = btoa(unescape(encodeURIComponent(JSON.stringify(siteConfig, null, 4))));
             const isNew = !siteConfigSha;
