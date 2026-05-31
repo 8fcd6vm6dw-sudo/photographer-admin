@@ -409,8 +409,21 @@
             };
             if (body) opts.body = JSON.stringify(body);
             const res = await fetch(`https://api.github.com${path}`, opts);
-            if (!res.ok) throw new Error(`GitHub API error: ${res.status}`);
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.message || `GitHub API error: ${res.status}`);
+            }
             return res.json();
+        }
+
+        // 获取文件 SHA（用于更新已有文件）
+        async function getFileSha(filePath) {
+            try {
+                const data = await ghAPI(`/repos/${REPO}/contents/${filePath}`);
+                return data.sha;
+            } catch (e) {
+                return null; // 文件不存在
+            }
         }
 
         // 加载配置
@@ -566,16 +579,20 @@
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
                 reader.onload = async () => {
-                    const base64 = btoa(new Uint8Array(reader.result).reduce((data, byte) => data + String.fromCharCode(byte), ''));
                     try {
-                        await ghAPI(`/repos/${REPO}/contents/${filePath}`, 'PUT', {
+                        const base64 = btoa(new Uint8Array(reader.result).reduce((data, byte) => data + String.fromCharCode(byte), ''));
+                        const body = {
                             message: `上传图片: ${filePath}`,
                             content: base64
-                        });
+                        };
+                        // 如果文件已存在，需要传 SHA 才能更新
+                        const sha = await getFileSha(filePath);
+                        if (sha) body.sha = sha;
+                        await ghAPI(`/repos/${REPO}/contents/${filePath}`, 'PUT', body);
                         resolve();
                     } catch (e) { reject(e); }
                 };
-                reader.onerror = reject;
+                reader.onerror = () => reject(new Error('文件读取失败'));
                 reader.readAsArrayBuffer(file);
             });
         }
@@ -616,44 +633,64 @@
         // 处理首页轮播上传
         async function handleHeroUpload(files) {
             if (files.length === 0) return;
-            showToast(`上传中... 0/${files.length}`);
+            let successCount = 0;
             for (let i = 0; i < files.length; i++) {
                 const file = files[i];
-                const compressed = await compressImage(file, 1920);
-                const num = config.hero.length + i + 1;
-                const filePath = `images/hero/${num}.jpg`;
-                const newFile = new File([compressed], `${num}.jpg`, { type: 'image/jpeg' });
-                await uploadImage(filePath, newFile);
-                config.hero.push(filePath);
-                showToast(`上传中... ${i + 1}/${files.length}`);
+                try {
+                    showToast(`压缩中... ${i + 1}/${files.length}`);
+                    const compressed = await compressImage(file, 1920);
+                    if (!compressed) throw new Error('压缩失败');
+                    const num = config.hero.length + i + 1;
+                    const filePath = `images/hero/${num}.jpg`;
+                    const newFile = new File([compressed], `${num}.jpg`, { type: 'image/jpeg' });
+                    showToast(`上传中... ${i + 1}/${files.length} (${Math.round(newFile.size/1024)}KB)`);
+                    await uploadImage(filePath, newFile);
+                    config.hero.push(filePath);
+                    successCount++;
+                } catch (err) {
+                    showToast(`第 ${i+1} 张上传失败: ${err.message}`, 'error');
+                    console.error('轮播图上传失败:', err);
+                }
             }
-            await saveConfig('更新首页轮播图');
-            renderHero();
-            showToast(`上传完成，共 ${files.length} 张`, 'success');
+            if (successCount > 0) {
+                await saveConfig('更新首页轮播图');
+                renderHero();
+                showToast(`上传完成，成功 ${successCount}/${files.length} 张`, 'success');
+            }
         }
 
         // 处理作品上传
         async function handlePortfolioUpload(files, category) {
             if (files.length === 0) return;
-            showToast(`上传中... 0/${files.length}`);
+            let successCount = 0;
             const catImages = config.portfolio.filter(p => p.category === category);
             for (let i = 0; i < files.length; i++) {
                 const file = files[i];
-                const compressed = await compressImage(file, 1200);
-                const num = catImages.length + i + 1;
-                const filePath = `images/portfolio/${category}/${num}.jpg`;
-                const newFile = new File([compressed], `${num}.jpg`, { type: 'image/jpeg' });
-                await uploadImage(filePath, newFile);
-                config.portfolio.push({
-                    src: filePath,
-                    name: file.name.replace(/\.[^/.]+$/, ''),
-                    category: category
-                });
-                showToast(`上传中... ${i + 1}/${files.length}`);
+                try {
+                    showToast(`压缩中... ${i + 1}/${files.length}`);
+                    const compressed = await compressImage(file, 1200);
+                    if (!compressed) throw new Error('压缩失败');
+                    const num = catImages.length + successCount + 1;
+                    const filePath = `images/portfolio/${category}/${num}.jpg`;
+                    const newFile = new File([compressed], `${num}.jpg`, { type: 'image/jpeg' });
+                    showToast(`上传中... ${i + 1}/${files.length} (${Math.round(newFile.size/1024)}KB)`);
+                    await uploadImage(filePath, newFile);
+                    config.portfolio.push({
+                        src: filePath,
+                        name: file.name.replace(/\.[^/.]+$/, ''),
+                        category: category
+                    });
+                    successCount++;
+                } catch (err) {
+                    showToast(`第 ${i+1} 张上传失败: ${err.message}`, 'error');
+                    console.error('作品上传失败:', err);
+                }
             }
-            await saveConfig('更新作品图片');
-            renderPortfolio();
-            showToast(`上传完成，共 ${files.length} 张`, 'success');
+            if (successCount > 0) {
+                await saveConfig('更新作品图片');
+                renderPortfolio();
+                showToast(`上传完成，成功 ${successCount}/${files.length} 张`, 'success');
+            }
         }
 
         // 删除首页图片
@@ -834,17 +871,24 @@
             aboutInput.addEventListener('change', async (e) => {
                 const file = e.target.files[0];
                 if (!file) return;
-                showToast('上传中...');
+                showToast('压缩图片中...');
                 try {
                     const compressed = await compressImage(file, 800);
+                    if (!compressed) throw new Error('图片压缩失败');
                     const newFile = new File([compressed], 'about.jpg', { type: 'image/jpeg' });
+                    const sizeKB = Math.round(newFile.size / 1024);
+                    showToast(`上传中... (${sizeKB}KB)`);
                     await uploadImage('images/about.jpg', newFile);
-                    siteConfig.aboutImage = `https://raw.githubusercontent.com/${REPO}/main/images/about.jpg`;
+                    // 更新预览（加时间戳避免缓存）
+                    const ts = Date.now();
+                    siteConfig.aboutImage = `https://raw.githubusercontent.com/${REPO}/main/images/about.jpg?t=${ts}`;
                     document.getElementById('aboutImagePreview').src = siteConfig.aboutImage;
-                    showToast('照片已更新，请保存设置并发布', 'success');
+                    // 保存到 siteConfig（不带时间戳）
+                    siteConfig.aboutImage = `https://raw.githubusercontent.com/${REPO}/main/images/about.jpg`;
+                    showToast('照片上传成功！请点击「保存设置」', 'success');
                 } catch (err) {
-                    showToast('上传失败', 'error');
-                    console.error(err);
+                    showToast('上传失败: ' + err.message, 'error');
+                    console.error('关于照片上传失败:', err);
                 }
                 aboutInput.value = '';
             });
